@@ -1,0 +1,6 @@
+__pycache__/
+sample*.pickle
+AccManTitler/
+media/
+.DS_Store
+"mixer copy*.py"
