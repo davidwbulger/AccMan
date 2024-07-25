@@ -7,120 +7,26 @@ import subprocess
 sf = 24  #  Scale factor for the whole video. Dimensions are 16sf x 9sf, so
          #  sf=120 will be 1080p. Smaller values are used for rapid dev.
 
-ffmpegCommandParts = [
-  'ffmpeg',
-  '-i media/IWorkedOut.mp4',
-  '-loop 1 -t 4 -i media/titleCard0.jpg',
-  '-i media/HeresTheBasic.mp4',
-  '-loop 1 -i media/blueGhost.png',
-  '-i media/pm.gif',
-  '-loop 1 -i media/WTFi.png', 
-  '-loop 1 -t 4 -i media/titleCard2.jpg',
-  '-filter_complex "' +
-  f'[3:v]scale={sf*10.67}:{sf*10.67}[bg0]' +
-  f';[4:v]scale={sf*10.67}:{sf*10.67},fps=30,loop=loop=-1:' +
-    'size=4*30:start=0[pm0]' +
-  f';[0:v]scale={16*sf}:{9*sf},trim=start=6.4:duration=6.6,' +
-    'setpts=PTS-STARTPTS,settb=AVTB,fps=30[v0]'+
-  ';[0:a]atrim=start=6.4:duration=6.6,asetpts=PTS-STARTPTS[a0]' +
-  f';[1:v]scale={16*sf}:{9*sf},settb=AVTB,fps=30[v2]' +
-  ';[v0][v2]xfade=transition=wiperight:duration=1.2:offset=5.4,' +
-    'format=yuv420p[v3]' +
-  f';[v3][bg0]overlay=shortest=1:x=(0.833*t-4.766)*16*{sf}:y=-0.074*9*{sf}:' +
-    "enable='between(t,4,8)'[v4]" +
-  f';[2:v]scale={16*sf}:{9*sf},trim=start=1.0:duration=24.0,' +
-    'setpts=PTS-STARTPTS,settb=AVTB,fps=30[v5]' +
-  ';[2:a]atrim=start=1.0:duration=24.0,asetpts=PTS-STARTPTS,' +
-    'adelay=8200:all=true[a1]' +
-  ';[v4][v5]xfade=transition=wiperight:duration=1.2:offset=8.2,' +
-    'format=yuv420p[v7]' +
-  f';[v7][pm0]overlay=shortest=1:x=(0.833*t-7.099)*16*{sf}:y=-0.074*9*{sf}:' +
-    "enable='between(t,6.8,10.8)'[v8]" +
-  f';[5]fade=out:st=3.5:d=0.5[wtfi0]' +
-  f';[wtfi0]scale=(t*(8-t)-15)*iw*{sf/120}:(t*(8-t)-15)*ih*{sf/120}:' +
-    'eval=frame[wtfi1]' +
-  f';[v8][wtfi1]overlay=x=(t*750-1300-517*(t*(8-t)-15))*{sf/120}:' +
-    f'y=(950-850*(t*(8-t)-15))*{sf/120}:' +
-    "shortest=1:enable='between(t,3.06,4)',split=2[v9][v9a]" +
-  ';[v9a]trim=start=14[v9b]' +
-  f';[6:v]scale={16*sf}:{9*sf},settb=AVTB,fps=30[v10]' +
-  ";[v9][v10]xfade=duration=0.3:offset=11,format=yuv420p[v11]" +
-  ";[v11][v9b]xfade=duration=0.3:offset=14,format=yuv420p[v12]" +
-  ";[a0][a1]amix=inputs=2:normalize=0[a3]" +
-  '"',
-  '-map [v12] -map [a3] output.mp4']
-
-ffmpegCommandParts = [
-  'ffmpeg -y',
-  '-i media/IWorkedOut.mp4',
-  '-loop 1 -i media/titleCard0.jpg',
-  '-i media/HeresTheBasic.mp4',
-  '-loop 1 -i media/blueGhost.png',
-  '-i media/pm.gif',
-  '-filter_complex "' +
-  '[0:a]atrim=start=6.4:duration=6.6,asetpts=PTS-STARTPTS,adelay=0:all=true[a0]' +
-  ';[2:a]atrim=start=1.0:duration=24.0,asetpts=PTS-STARTPTS,' +
-    'adelay=8200:all=true[a1]' +
-  ";[a0][a1]amix=inputs=2:normalize=0[a3]" +
-  f';[0:v]scale={16*sf}:{9*sf},trim=start=6.4:duration=6.6,' +
-    'setpts=PTS-STARTPTS,settb=AVTB,fps=30[pv0]'+
-  f';[1:v]scale={16*sf}:{9*sf},settb=AVTB,fps=30[pv1]' +
-  f';[2:v]scale={16*sf}:{9*sf},trim=start=1.0:duration=24.0,' +
-    'setpts=PTS-STARTPTS,settb=AVTB,fps=30[pv2]' +
-  ';[pv0][pv1]xfade=transition=wiperight:duration=1.2:offset=5.4,' +
-    'format=yuv420p[wi0a]' +
-  f';[3:v]scale={sf*10.67}:{sf*10.67}[wi0b]' +
-  #f';[wi0a][wi0b]overlay=shortest=1:x=(0.833*t-4.766)*16*{sf}:y=-0.074*9*{sf}:' +
-  f';[wi0a][wi0b]overlay=shortest=1:x=(t-5.7185)*320.000:y=-15:' +
-    "enable='between(t,4,8)'[tv1]" +
-  ';[tv1][pv2]xfade=transition=wiperight:duration=1.2:offset=8.2,' +
-    'format=yuv420p[wi1a]' +
-  f';[4:v]scale={sf*10.67}:{sf*10.67},fps=30,loop=loop=-1:' +
-    'size=4*30:start=0[wi1b]' +
-  f';[wi1a][wi1b]overlay=shortest=1:x=(0.833*t-7.099)*16*{sf}:y=-0.074*9*{sf}:' +
-    "enable='between(t,6.8,10.8)'[tv1]" +
-  '"',
-  '-map [tv1] -map [a3] outputA.mp4']
-
-commandString = ' '.join(ffmpegCommandParts)
-if (stillWorkingOutAudioGraph := False):
-  subprocess.run(commandString, shell=True)
-  # print(commandString)
-  quit()
-
 """
-Now we're going to try to build a similar command using a spine-with-overlays
-method. We'll have a list of tuples maybe, each with
+We're going to build an ffmpeg command using a spine-with-overlays method.
+We'll have a list of tuples, each with:
   a 'vertebra'
   an offset (i.e., an amount to trim off the beginning of the vertebra)
   a duration (specifying, perhaps modif by xtn, the start time for next vert)
-  a list of overlay objects describing media/ to superimpose
-  an object describing the transition from the previous vert (ignored for [0]).
-
-Define functions wtfi & wiper, taking remaining args & a vert time offset.
+  an object describing the transition from the previous vert (ignored for [0])
+  a list of overlay objects describing media/ to superimpose.
 
 Assume input type according to file extension. It seems to be fine to simply
 repeat inputs in place of splitting them; it might be simpler, so I think I'll
 just do that.
 
-As we process the script tuple, we will build three lists:
+As we process the script tuple, we will build two lists:
   the input specification list
   the video filter edge list
-  the audio filter edge list
-Other than a video/audio split, we'll assume a linear filter graph.
-
-I'm a little unclear on how the audio graph should look. Probably I ought to
-manually edit the sample ffmpeg command just a little further so it encompasses
-the second webcam capture (after the 1st title card).
-
-PLAN:
-  Maybe with help from ChatGPT, edit manual ffmpeg command a little further:
-    Do we really need to separate the video & audio?
-    Go as far as HeresTheBasic with the titlecard overlays
-    Include WTFi
-    Find out whether we can specify x&y ito t rather than n
-  Then continue developing the ffmpeg-command-generation code
-  Also at some point I should edit the thanks card to include the pie chart
+The audio situation is simpler, because all the audio is on the 'spine.' (There
+is ONE scene with an audio overlay, but I've processed it separately as a
+special case in prepro.py.) Other than a video/audio split, we'll assume a
+linear filter graph.
 """
 
 def isVideo(fname):
@@ -137,10 +43,6 @@ class Mixer():
     self.nif = 0   #  number (so far) of input files
     self.nvn = 0   #  number of video nodes (excluding the file inputs)
 
-  ## DEFINE THE TRANSITION AND EFFECT FUNCTIONS:
-  # These work by modifying the 'command argument variables' defined above.
-
-  # Note, every transition must have new source and duration as first two args.
   def newNode(self):
     retv = f'vn{self.nvn}'
     self.nvn+=1
@@ -164,14 +66,14 @@ class Mixer():
 
   def processScript(self, script):
     # Work out the start time of each 'vertebra':
-    vertDurations = [dur for (vfname, trim, dur, FX, trans) in script[:-1]]
-    vertOverlaps = [trans[2] for (vfname, trim, dur, FX, trans) in script[1:]]
+    vertDurations = [dur for (vfname, trim, dur, trans, FX) in script[:-1]]
+    vertOverlaps = [trans[2] for (vfname, trim, dur, trans, FX) in script[1:]]
     starts = np.cumsum([0,*(d-o for (d,o) in zip(vertDurations,vertOverlaps))])
     eschaton = sum(dur for (a,b,dur,c,d) in script) - sum(
-      trans[2] for (a,b,c,d,trans) in script[1:])
+      trans[2] for (a,b,c,trans,d) in script[1:])
 
     # Load the vertebral input files:
-    for (vfname, trim, duration, FX, trans) in script:
+    for (vfname, trim, duration, trans, FX) in script:
       self.loadFile(vfname, duration)  #  vertebrae are numbered sequentially
 
     # The audio mix is relatively simple, so do that first. Note, we're making
@@ -179,7 +81,7 @@ class Mixer():
     #   only vertebra have audio content,
     #   only mp4 or mov can have audio content,
     #   there's no overlap in audio.
-    sonix = [(k, trim, dur, delay) for (k,((vfname,trim,dur,FX,x),delay)) in
+    sonix = [(k, trim, dur, delay) for (k,((vfname,trim,dur,x,FX),delay)) in
       enumerate(zip(script,starts)) if isVideo(vfname)]
     for (k,trim,dur,delay) in sonix:
       fe = (f'[{k}:a]atrim=start={trim}:duration={dur},' +
@@ -190,7 +92,7 @@ class Mixer():
     self.FE.append('[apsn]speechnorm=e=9.375:r=0.00003:l=1[a]')
 
     # Now preprocess each vertebral input:
-    for (k,(vfname,trim,dur,FX,trans)) in enumerate(script):
+    for (k,(vfname,trim,dur,trans,FX)) in enumerate(script):
       fe = f'[{k}:v]scale={16*sf}:{9*sf},'
       if isVideo(vfname):
         fe += f'trim=start={trim}:duration={dur},setpts=PTS-STARTPTS,'
@@ -198,7 +100,7 @@ class Mixer():
       self.FE.append(fe)
 
     # Process the FX, mapping each pv node to a corresponding fv node:
-    for (k,(vfname,trim,dur,FX,trans)) in enumerate(script):
+    for (k,(vfname,trim,dur,trans,FX)) in enumerate(script):
       curNode = f'pv{k}'
       for fx in FX:
         # curNode = fx[0](self,curNode,starts[k]+fx[1],*fx[2:])
@@ -206,30 +108,26 @@ class Mixer():
       self.FE.append(f'[{curNode}]null[fv{k}]')
 
     # Process the transitions:
-    for (k,(vfname,trim,dur,fx,trans)) in enumerate(script[1:]):
+    for (k,(vfname,trim,dur,trans,FX)) in enumerate(script[1:]):
       trans[0](self, k, starts[k+1], *trans[1:])
 
     # Build the ffmpeg command:
     fcom = ' '.join(['ffmpeg -y', *self.INS,
       '-filter_complex', '"'+';'.join(self.FE)+'"',
-      f'-map [tv{len(script)-1}] -map [a] -t {eschaton} outputB.mp4'])
+      f'-map [tv{len(script)-1}] -map [a] -t {eschaton} AccMan.mp4'])
 
     # Output:
-    if (justPrintLists := False):
-      [print(f'[{k}]   {ins}') for (k,ins) in enumerate(self.INS)]
-      print()
-      [print(fe) for fe in self.FE]
-    elif (justPrintCommand := False):
-      print(fcom)
-    else:
-      subprocess.run(fcom, shell=True)
-      print('Command was:\n')
-      # print(fcom.replace('"','"\n').replace(';',';\n'))
-      [print(f'[{k}]   {ins}') for (k,ins) in enumerate(self.INS)]
-      print()
-      [print(fe) for fe in self.FE]
+    subprocess.run(fcom, shell=True)
+    print('Command was:\n')
+    [print(f'[{k}]   {ins}') for (k,ins) in enumerate(self.INS)]
+    print()
+    [print(fe) for fe in self.FE]
 
 # THE TRANSITION EFFECTS:
+# These work by modifying the mixer object's 'command argument variables.'
+
+# Note, every transition must have new source and duration as first two args.
+
 def wiper(mixer,  #  the Mixer object
   k,              #  vertebra number, for node labelling
   startTime,      #  start time of wipe, relative to whole mix
@@ -255,7 +153,15 @@ def wiper(mixer,  #  the Mixer object
   mixer.FE.append(fe)
 
 # THE "FX" (i.e., NONTRANSITION EFFECTS) FUNCTIONS:
+# Each 'fx' function should have arguments:
+#   the mixer object
+#   the video node for this vertebra prior to the effect
+#   the effect's start time (relative to the vertebra)
+#   any other effect-specific required arguments
+# and should return a new node with the effect applied. 
+
 def wtfi(mixer, srcNode, startTime):
+  # A one-off effect: animates the WTFi logo from startTime.
   dur = 3
   win = mixer.loadFile(f'media/WTFi.png')
   fe = f'[{win}]fade=out:st={dur+startTime-0.5}:d=0.5[wtfi0]'
@@ -272,6 +178,7 @@ def wtfi(mixer, srcNode, startTime):
   return destNode
 
 def tcard(mixer, srcNode, startTime, suffix):
+  # Shows a titleCard from startTime to the end of the vertebra.
   cin = mixer.loadFile(f'media/titleCard{suffix}.jpg')
   scaleNode = mixer.newNode()
   fe = f'[{cin}]scale={16*sf}:{9*sf},settb=AVTB,fps=30[{scaleNode}]'
@@ -282,13 +189,47 @@ def tcard(mixer, srcNode, startTime, suffix):
   mixer.FE.append(fe)
   return destNode
 
+def initialOverlay(mixer, srcNode, endTime, graphic):
+  # Shows a graphic (image or video) from the start of the vertebra to endTime.
+  grin = mixer.loadFile(f'media/{graphic}')
+  scaleNode = mixer.newNode()
+  fe = f'[{grin}]scale={16*sf}:{9*sf},settb=AVTB,fps=30[{scaleNode}]'
+  mixer.FE.append(fe)
+  destNode = mixer.newNode()
+  fe = f"[{srcNode}][{scaleNode}]overlay=enable='between(t,0,{endTime})'"
+  fe += f'[{destNode}]'
+  mixer.FE.append(fe)
+  return destNode
+
+def midOverlay(mixer, srcNode, startTime, endTime, graphic):
+  # Shows a graphic from startTime to endTime.
+  # DELAY THE OVERLAYS!
+  grin = mixer.loadFile(f'media/{graphic}')
+  scaleNode = mixer.newNode()
+  fe = f'[{grin}]scale={16*sf}:{9*sf},settb=AVTB,fps=30[{scaleNode}]'
+  mixer.FE.append(fe)
+  destNode = mixer.newNode()
+  fe = f'[{srcNode}][{scaleNode}]overlay=enable='
+  fe += f"'between(t,{startTime},{endTime})'[{destNode}]"
+  mixer.FE.append(fe)
+  return destNode
+
 # THE SCRIPT, WHICH CAN REFER TO CONTENT FILES & THE ABOVE FX & TRANSITIONS:
 script = (
-  ('media/IWorkedOut.mp4', 6.4, 6.6, [(wtfi,2)], None),
-  ('media/titleCard0.jpg', 0, 4, [], (wiper, 'media/blueGhost.png', 1.2)),
-  ('media/HeresTheBasic.mp4', 1, 24,
-    [(tcard, 3, '2'), (tcard, 8, '5'), (tcard, 15, '9')],
-    (wiper, 'media/pm.gif', 1.2))
+  ('media/IWorkedOut.mp4', 0.8, 6.4, None, [(wtfi,2)]),
+  ('media/titleCard0.jpg', 0, 4, (wiper, 'media/blueGhost.png', 1.2), []),
+  ('media/HeresTheBasic.mp4', 3, 18.5, (wiper, 'media/pm.gif', 1.2),
+    [(tcard, 2, '2'), (tcard, 4.9, '5'), (tcard, 10.3, '9')]),
+  ('media/titleCard10.jpg', 0, 5, (wiper, 'media/blueGhost.png', 1.2),
+    [(tcard,2,'11')]),
+  ('media/PacManCodeCom.mp4', 0.4, 76.6, (wiper, 'media/pm.gif', 1.2), []),
+  ('media/titleCard12.jpg', 0, 5, (wiper, 'media/blueGhost.png', 1.2),
+    [(tcard,2,'13')]),
+  ('media/DramaMix.mp4', 0.4, 30.6, (wiper, 'media/pm.gif', 1.2),
+    [(initialOverlay,6,'pitchDetectionReadings.png')]),
+  ('media/NoGPU.mp4', 0.2, 27.6, (wiper, 'media/redGhost.png', 1.2), []),
+  ('media/FFT.mp4', 0.2, 32, (wiper, 'media/pm.gif', 1.2),
+    [(midOverlay,6,14,'ShowFFT2D.mp4'),(midOverlay,14,31.8,'ShowFFT3D.mp4'),]),
 )
 
 Mixer().processScript(script)

@@ -2,6 +2,16 @@
 # (Actually I'm moving toward using this one file for all of the pac man
 # accordion video's manim content.)
 ###############################################################################
+""" Run this at command prompt to create high-quality graphics:
+manim -qh --fps 30 sceneFFT.py Bicycle
+manim -qh --fps 30 sceneFFT.py Heisenberg
+manim -tqh --fps 30 sceneFFT.py MMIIL
+manim -qh --fps 30 sceneFFT.py Noodle
+manim -qh --fps 30 sceneFFT.py ShowFFT3D
+manim -qh --fps 30 sceneFFT.py ShowFFT2D
+manim -qh --fps 30 sceneFFT.py ShowFFTHaSer
+manim -qh --fps 30 sceneFFT.py NN
+"""
 
 from manim import *
 import numpy as np
@@ -14,7 +24,7 @@ chl = 2048  #  chunk length in samples
 sf = 44100
 
 def getAudioData():
-  sampfile = '../../Steps/sample34_20240621.pickle'
+  sampfile = '../training/sample34_20240621.pickle'
   offset = 12345  #  an arbitrary point to start the chunk at
   note = 15  #  Bb, as an example
   with open(sampfile, 'rb') as fid:

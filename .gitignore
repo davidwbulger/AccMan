@@ -5,3 +5,4 @@ media/
 .DS_Store
 "mixer copy*.py"
 *.swp
+*.mp4

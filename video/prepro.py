@@ -34,7 +34,7 @@ ffmpeg -y -i media/AlgoPitchDetection.mp4 -i media/Dramatisation.mp4 \
  [1:a]atrim=start={trim2},asetpts=PTS-STARTPTS,adelay={int(1000*delay2)}|{int(1000*delay2)}[a1]; \
  [a0][a1]amix=inputs=2:weights='0.9 0.12'[a]; \
  [0:v]setpts=PTS-STARTPTS,fps=fps=30[v0]; \
- [1:v]trim=start={trim2-0.15},setpts=PTS-STARTPTS,eq=saturation=0.55,drawtext=fontfile=../game/PressStart2P-Regular.ttf:text='Dramatisation':fontcolor=white:fontsize=84:box=1:boxcolor=black@0.8:boxborderw=5:x=(w-text_w)/2:y=0.88*h[v1]; \
+ [1:v]trim=start={trim2-0.15},setpts=PTS-STARTPTS,eq=saturation=0.42,drawtext=fontfile=../game/PressStart2P-Regular.ttf:text='Dramatisation':fontcolor=white:fontsize=84:box=1:boxcolor=black@0.8:boxborderw=5:x=(w-text_w)/2:y=0.88*h[v1]; \
  [v1]fps=fps=30[v1_fixed]; \
  [v0][v1_fixed]xfade=transition=fade:duration=0.3:offset={delay2-0.15},format=yuv420p[v]" \
 -map "[v]" -map "[a]" media/DramaMix.mp4
