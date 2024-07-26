@@ -6,3 +6,5 @@ media/
 "mixer copy*.py"
 *.swp
 *.mp4
+script.txt
+thumbnail

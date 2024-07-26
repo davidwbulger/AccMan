@@ -130,7 +130,7 @@ class NN(Scene):
 
     [self.play(AnimationGroup(a.animate.set_color(c)
       for asl in arrows2 for a in asl),run_time=0.4) for c in [GRAY,WHITE]*3]
-    self.wait(1)
+    self.wait(3.6)
 
 class Bicycle(Scene):
   def construct(self):
@@ -288,7 +288,9 @@ class ShowFFT3D(ThreeDScene):
     self.stop_ambient_camera_rotation()
     self.wait(3/rate)
 
-class ShowFFTHaSer(Scene):
+# The next two are extremely similar. I should subclass them to recycle the
+# common parts, but I'm too lazy.
+class ShowFFTHaSerBb(Scene):
   # Return to the amp vs freq graph from ShowFFT3D to show harmonic series.
   # Some repetition from ShowFFT3D, sorry.
   def construct(self):
@@ -326,46 +328,96 @@ class ShowFFTHaSer(Scene):
         AnimationGroup(*(FadeOut(rec) for rec in rex),run_time=0.2),
         lag_ratio=1)
 
-    rate = 4  #  return to 1 for full-length video
+    rate = 1  #  return to 1 for full-length video
     zf = 12  #  = zoom factor for the frequency axis
     self.add(ax,axlab,*lines)
 
-    self.wait(2/rate)
+    self.wait(1/rate)
     self.play(ax.x_axis.animate.stretch_about_point(zf,0,ax.coords_to_point(
       0,0)), run_time=2/rate)
     self.wait(1/rate)
-    self.play(noteAndOvertones(r'B$\flat_3$',233.1,1800,-.2,4/rate)['anim'])
-    self.wait(1/rate)
-    bflat2 = noteAndOvertones(r'B$\flat_2$',233.1/2,1800,-.5,4/rate)
-    self.play(bflat2['anim'])
-    self.play(highlight(233.1*np.arange(1,9),-.2,-.5,5/rate))
-    self.play(AnimationGroup(FadeOut(mob) for mob in bflat2['mobs']),
-      run_time=.5/rate)
-    self.wait(1/rate)
-    bflat4 = noteAndOvertones(r'B$\flat_4$',233.1*2,1800,-.5,4/rate)
+    self.play(noteAndOvertones(r'B$\flat_3$',233.1,1800,-.2,16/rate)['anim'])
+    self.wait(9/rate)
+
+    bflat4 = noteAndOvertones(r'B$\flat_4$',233.1*2,1800,-.5,1/rate)
     self.play(bflat4['anim'])
-    self.play(highlight(466.2*np.arange(1,5),-.2,-.5,5/rate))
+    self.play(highlight(466.2*np.arange(1,5),-.2,-.5,2/rate))
     self.play(AnimationGroup(FadeOut(mob) for mob in bflat4['mobs']),
       run_time=.5/rate)
     self.wait(1/rate)
-    f4 = noteAndOvertones(r'F$_4$',233.1*1.5,1800,-.5,4/rate)
+
+    bflat2 = noteAndOvertones(r'B$\flat_2$',233.1/2,1800,-.5,1/rate)
+    self.play(bflat2['anim'])
+    self.play(highlight(233.1*np.arange(1,9),-.2,-.5,5/rate))
+    self.wait(1/rate)
+
+class ShowFFTHaSerFA(Scene):
+  # Return to the amp vs freq graph from ShowFFT3D to show harmonic series.
+  # Some repetition from ShowFFT3D, sorry.
+  def construct(self):
+    (t,wav,f,amp,phase) = getAudioData()
+    F = f[-1]  #  max freq, maybe 22050Hz
+    amp *= 3/np.max(amp) # for visual clarity
+    ax = Axes(
+      x_range=[0,F,2*F],
+      y_range=[0,3.3,5],
+      x_length=12, y_length=5)
+    axlab = ax.get_axis_labels(Text("Frequency").scale(0.7),
+      Text("Amplitude").scale(0.7))
+    lines = [always_redraw(lambda i=i:  #  this i=i thing is mysterious
+      Line(ax.coords_to_point(f[i],0),ax.coords_to_point(f[i],amp[i]),color=RED
+      )) for i in range(len(amp))]
+
+    axcop = lambda x,y: ax.coords_to_point(x,y)
+
+    def noteAndOvertones(sym,freq,maxf,vpos,delay):
+      texsym = Tex(sym,color=YELLOW).move_to(axcop(freq,vpos))
+      cirx = [Circle(color=YELLOW,radius=0.1).move_to(axcop((k+2)*freq,vpos))
+        for k in np.arange(maxf/freq-1)]
+      return {'anim':animations_with_start_time(
+        [(0,FadeIn(texsym))] +
+        [(delay+k*0.18, FadeIn(circ)) for (k,circ) in enumerate(cirx)]),
+        'mobs':[texsym]+cirx}
+
+    def highlight(xvec,y0,y1,T):
+      rex = [RoundedRectangle(corner_radius=0.15,height=1,width=.8,
+        fill_color=BLUE_B, fill_opacity=0.3, stroke_width=0).move_to(
+        (axcop(x,y0)+axcop(x,y1))/2) for x in xvec]
+      return AnimationGroup(
+        AnimationGroup(*(FadeIn(rec) for rec in rex),run_time=0.2),
+        Wait(T-0.4),
+        AnimationGroup(*(FadeOut(rec) for rec in rex),run_time=0.2),
+        lag_ratio=1)
+
+    rate = 1  #  return to 1 for full-length video
+    zf = 12  #  = zoom factor for the frequency axis
+    self.add(ax,axlab,*lines)
+
+    self.wait(0.1/rate)
+    self.play(ax.x_axis.animate.stretch_about_point(zf,0,ax.coords_to_point(
+      0,0)), run_time=0.3/rate)
+    self.play(noteAndOvertones(r'B$\flat_3$',233.1,1800,-.2,0)['anim'])
+    f4 = noteAndOvertones(r'F$_4$',233.1*1.5,1800,-.5,0)
     self.play(f4['anim'])
-    self.play(highlight(233.1*3*np.arange(1,3),-.2,-.5,5/rate))
+    self.play(highlight(233.1*3*np.arange(1,3),-.2,-.5,11/rate))
     self.play(AnimationGroup(FadeOut(mob) for mob in f4['mobs']),
       run_time=.5/rate)
     self.wait(1/rate)
-    # self.play(noteAndOvertones(r'B$_3$',246.9,1800,-.5,4/rate)['anim'])
-    self.play(noteAndOvertones(r'A$_3$',220,1800,-.5,4/rate)['anim'])
-    self.wait(1/rate)
+    a3 = noteAndOvertones(r'A$_3$',220,1800,-.5,0)
+    self.play(a3['anim'])
+    self.wait(13/rate)
+    self.play(AnimationGroup(FadeOut(mob) for mob in a3['mobs']),
+      run_time=.5/rate)
+    self.wait(26/rate)
 
 class MMIIL(Scene):
   def construct(self):
     eqns = MathTex(r'2048', r'&= 2^{11}',
       r'\\ &= 2\times 2\times 2\times 2\times 2\times 2\times 2\times ' +
-      r'2\times 2\times 2\times 2',color="#224466")
-    self.play(Write(eqns[0]))
-    self.wait(2)
-    self.play(Write(eqns[1]))
-    self.wait(2)
-    self.play(Write(eqns[2]))
+      r'2\times 2\times 2\times 2',color="#FFFFFF",font_size=60)
+    self.play(Write(eqns[0],run_time=0.5))
+    self.wait(0.5)
+    self.play(Write(eqns[1],run_time=0.5))
+    self.wait(0.5)
+    self.play(Write(eqns[2],run_time=2))
     self.wait(2)

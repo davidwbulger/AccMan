@@ -6,6 +6,7 @@ import subprocess
 
 sf = 24  #  Scale factor for the whole video. Dimensions are 16sf x 9sf, so
          #  sf=120 will be 1080p. Smaller values are used for rapid dev.
+sf = 120
 
 """
 We're going to build an ffmpeg command using a spine-with-overlays method.
@@ -67,10 +68,10 @@ class Mixer():
   def processScript(self, script):
     # Work out the start time of each 'vertebra':
     vertDurations = [dur for (vfname, trim, dur, trans, FX) in script[:-1]]
-    vertOverlaps = [trans[2] for (vfname, trim, dur, trans, FX) in script[1:]]
+    vertOverlaps = [trans[1] for (vfname, trim, dur, trans, FX) in script[1:]]
     starts = np.cumsum([0,*(d-o for (d,o) in zip(vertDurations,vertOverlaps))])
     eschaton = sum(dur for (a,b,dur,c,d) in script) - sum(
-      trans[2] for (a,b,c,trans,d) in script[1:])
+      trans[1] for (a,b,c,trans,d) in script[1:])
 
     # Load the vertebral input files:
     for (vfname, trim, duration, trans, FX) in script:
@@ -126,13 +127,11 @@ class Mixer():
 # THE TRANSITION EFFECTS:
 # These work by modifying the mixer object's 'command argument variables.'
 
-# Note, every transition must have new source and duration as first two args.
-
 def wiper(mixer,  #  the Mixer object
   k,              #  vertebra number, for node labelling
   startTime,      #  start time of wipe, relative to whole mix
-  figLeaf,        #  the image or gif that scrolls along to hide the wipe
-  dur):           #  duration of the wipe itself (figleaf is visible longer)
+  dur,            #  duration of the wipe itself (figleaf is visible longer)
+  figLeaf):       #  the image or gif that scrolls along to hide the wipe
   # The crossfade:
   fe = f'[{'t' if k else 'f'}v{k}][fv{k+1}]xfade=transition=wiperight:'
   fe += f'duration={dur}:offset={startTime:.3f},format=yuv420p[wi{k}a]'
@@ -150,6 +149,11 @@ def wiper(mixer,  #  the Mixer object
   fe = f'[wi{k}a][wi{k}b]overlay=shortest=1:'
   fe += f'x=(t-{startTime+0.3185})*{16*sf/dur:.3f}:y={int(-0.09*9*sf)}:enable='
   fe +=f"'between(t,{startTime-0.5*dur:.3f},{startTime+1.5*dur:.3f})'[tv{k+1}]"
+  mixer.FE.append(fe)
+
+def fade(mixer, k, startTime, dur):
+  fe = f'[{'t' if k else 'f'}v{k}][fv{k+1}]xfade='
+  fe += f'duration={dur}:offset={startTime:.3f},format=yuv420p[tv{k+1}]'
   mixer.FE.append(fe)
 
 # THE "FX" (i.e., NONTRANSITION EFFECTS) FUNCTIONS:
@@ -206,7 +210,8 @@ def midOverlay(mixer, srcNode, startTime, endTime, graphic):
   # DELAY THE OVERLAYS!
   grin = mixer.loadFile(f'media/{graphic}')
   scaleNode = mixer.newNode()
-  fe = f'[{grin}]scale={16*sf}:{9*sf},settb=AVTB,fps=30[{scaleNode}]'
+  fe = f'[{grin}]scale={16*sf}:{9*sf},settb=AVTB,fps=30,'
+  fe += f'setpts=PTS+{startTime}/TB[{scaleNode}]'
   mixer.FE.append(fe)
   destNode = mixer.newNode()
   fe = f'[{srcNode}][{scaleNode}]overlay=enable='
@@ -217,19 +222,47 @@ def midOverlay(mixer, srcNode, startTime, endTime, graphic):
 # THE SCRIPT, WHICH CAN REFER TO CONTENT FILES & THE ABOVE FX & TRANSITIONS:
 script = (
   ('media/IWorkedOut.mp4', 0.8, 6.4, None, [(wtfi,2)]),
-  ('media/titleCard0.jpg', 0, 4, (wiper, 'media/blueGhost.png', 1.2), []),
-  ('media/HeresTheBasic.mp4', 3, 18.5, (wiper, 'media/pm.gif', 1.2),
+  ('media/titleCard0.jpg', 0, 4, (wiper, 1.2, 'media/blueGhost.png'), []),
+  ('media/HeresTheBasic.mp4', 3, 18.5, (wiper, 1.2, 'media/pm.gif'),
     [(tcard, 2, '2'), (tcard, 4.9, '5'), (tcard, 10.3, '9')]),
-  ('media/titleCard10.jpg', 0, 5, (wiper, 'media/blueGhost.png', 1.2),
+  ('media/titleCard10.jpg', 0, 5, (wiper, 1.2, 'media/blueGhost.png'),
     [(tcard,2,'11')]),
-  ('media/PacManCodeCom.mp4', 0.4, 76.6, (wiper, 'media/pm.gif', 1.2), []),
-  ('media/titleCard12.jpg', 0, 5, (wiper, 'media/blueGhost.png', 1.2),
+  ('media/PacManCodeCom.mp4', 0.4, 76.6, (wiper, 1.2, 'media/pm.gif'), []),
+  ('media/titleCard12.jpg', 0, 5, (wiper, 1.2, 'media/blueGhost.png'),
     [(tcard,2,'13')]),
-  ('media/DramaMix.mp4', 0.4, 30.6, (wiper, 'media/pm.gif', 1.2),
+  ('media/DramaMix.mp4', 0.4, 30.6, (wiper, 1.2, 'media/pm.gif'),
     [(initialOverlay,6,'pitchDetectionReadings.png')]),
-  ('media/NoGPU.mp4', 0.2, 27.6, (wiper, 'media/redGhost.png', 1.2), []),
-  ('media/FFT.mp4', 0.2, 32, (wiper, 'media/pm.gif', 1.2),
+  ('media/NoGPU.mp4', 0.2, 27.6, (wiper, 1.2, 'media/redGhost.png'), []),
+  ('media/FFT.mp4', 0.2, 31.2, (wiper, 1.2, 'media/pm.gif'),
     [(midOverlay,6,14,'ShowFFT2D.mp4'),(midOverlay,14,31.8,'ShowFFT3D.mp4'),]),
+  ('media/Numbers.mp4', 0.2, 29, (fade,0.3),
+    [(midOverlay,19.2,25.2,'MMIIL.mov')]),
+  ('media/WhichOctave.mp4', 0.2, 55, (wiper, 1.2, 'media/redGhost.png'),
+    [(midOverlay,6,55,'ShowFFTHaSerBb.mp4')]),
+  ('media/MasterSwitch.mp4', 1, 19, (fade,0.3), []),
+  ('media/FetA.mp4', 1, 60, (fade,0.3),
+    [(midOverlay,0,60,'ShowFFTHaSerFA.mp4')]),
+  ('media/Heisenberg.mp4', 0.4, 25, (fade,0.3),
+    [(midOverlay,12,25,'PositionMomentum.mp4')]),
+  ('media/NotSidetracked.mp4', 1.2, 17.5, (fade,0.3), []),
+  ('media/GiantHassle.mp4', 0, 26, (wiper,1.2, 'media/pm.gif'), []),
+  ('media/NNLooksLike.mp4', 0, 26, (fade,0.3), [(midOverlay,0,30,'NN.mp4')]),
+  ('media/AirQuotes.mp4', 0.2, 24.0, (fade,0.3), []),
+  ('media/Keeble.mp4', 0.7, 47, (fade,0.3), []),
+  ('media/SeventeenthDimension.mp4', 0.1, 16, (fade,0.3), []),
+  ('media/RoomInYourHeart.mp4', 6, 38, (fade,0.3),
+    [(midOverlay,15,26,'Bicycle.mp4')]),
+  ('media/titleCard14.jpg', 0, 5, (wiper, 1.2, 'media/blueGhost.png'),
+    [(tcard,2,'15')]),
+  ('media/CodeTour.mp4', 0, 114, (wiper, 1.2, 'media/pm.gif'), []),
+  ('media/GamePlay2.mp4', 0, 53, (fade,0.3), []),
+  ('media/titleCard17.jpg', 0, 3, (wiper, 1.2, 'media/blueGhost.png'), []),
+  ('media/EnjoyedHearing.mp4', 0.5, 120.5, (wiper, 1.2, 'media/pm.gif'), []),
+  ('media/ChooseFourChords.mp4', 0.0, 27.6, (fade,0.3),
+    [(midOverlay,0,27.6,'Noodle.mp4')]),
+  ('media/ThanksForWatching.mp4', 0.4, 9.4, (fade,0.3), []),
+  ('media/titleCard18.jpg', 0, 5, (fade,0.3),
+    [(tcard,1.2,'19')]),
 )
 
 Mixer().processScript(script)
