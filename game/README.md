@@ -1,4 +1,4 @@
-This folder contains the actual game code. Almost everything here is borrowed from [pacmancode.com](pacmancode.com).
+This folder contains the actual game code. Almost everything here is borrowed from [pacmancode.com](https://pacmancode.com).
 I've included it here for completeness,
 but I encourage you visit that site for more details about how the game code works.
 
