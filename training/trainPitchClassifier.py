@@ -17,9 +17,9 @@ rng = np.random.default_rng()
 # and my own 'circle learning' demo leranCircle.py.
 
 # PARAMETERS
-sampfile = 'sample34_20240621.pickle'
+sampfile = 'sample.pickle'
 chl = 2048  #  chunk length in samples
-subset = [17,20,23,26]  #  or None
+subset = [17,20,23,26]  #  if not None, the list of notes to train for.
 
 with open(sampfile, 'rb') as fid:
   samples = pickle.load(fid)
@@ -44,7 +44,10 @@ if L < chl:
 
 classes = torch.eye(N).repeat(batch_mult,1)
 def trainingBatch():
+  # Randomly select batch_mult chunks from the middle of each audio sample:
   starts = rng.integers(0,L-chl,size=N*batch_mult,endpoint=True)
+
+  # Calculate their FFT amplitudes:
   spectra = np.abs(np.fft.rfft(np.array([samples[n%N,s:s+chl]
     for (n,s) in enumerate(starts)]), axis=1)[:,1:])
   return(torch.tensor(spectra,dtype=torch.float32),classes)
@@ -69,7 +72,7 @@ def train(model, lossFn, optimiser):
   scheduler.step()
   return loss.item()
 
-# Get cpu, gpu or mps device for training.
+# Get cpu, gpu or mps device for training. (Mine was just cpu, sadly.)
 device = ("cuda" if torch.cuda.is_available()
   else "mps" if torch.backends.mps.is_available()
   else "cpu")

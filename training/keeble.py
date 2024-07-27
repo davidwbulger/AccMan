@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np
 import pickle
-import sounddevice as sd
+import pyaudio
 import torch
 from torch import nn
 
@@ -13,6 +13,8 @@ from torch import nn
 N = 34  #  number of sample notes; will eventually be 34
 chunkLen = 2048  #  chunk length in samples
 sampFreq = 44100
+sample_format = pyaudio.paInt16  # 16 bits per sample
+channels = 1
 
 ## THE NEURAL NETWORK MODEL
 class NeuralNetwork(nn.Module):
@@ -24,8 +26,12 @@ class NeuralNetwork(nn.Module):
     return self.nnet(spectra)
 
 model = NeuralNetwork()
-model.load_state_dict(torch.load('pitch.ptm'))
-model.eval()  #  cargo cult?
+model.load_state_dict(torch.load('../game/pitch.ptm'))
+model.eval()
+
+p = pyaudio.PyAudio()  # Create an interface to PortAudio
+stream = p.open(format=sample_format, channels=channels, rate=sampFreq,
+  frames_per_buffer=chunkLen, input=True)
 
 (fig,ax) = plt.subplots(2,1,height_ratios=(2,1))
 plt.subplots_adjust(hspace=0)
@@ -43,15 +49,23 @@ def init():
     ax[0].set_ylim(0, 1)
 
 def update(frame):
-    aud = sd.rec(chunkLen, samplerate=sampFreq, channels=1, blocking=True
-      ).flatten()
+  samplesToSkip = stream.get_read_available() - chunkLen
+  if samplesToSkip < 0:
+    return
+  if samplesToSkip > 0:
+    _ = stream.read(samplesToSkip, exception_on_overflow=False)
+  aud = np.frombuffer(stream.read(chunkLen, exception_on_overflow=False),
+    dtype=np.int16)
+  if np.max(np.abs(aud)) < 1037:  #  15dB noise floor
+    pred = np.zeros(N)
+  else:
     spectrum = np.abs(np.fft.rfft(aud)[1:])
     with torch.no_grad():
       pred = torch.nn.functional.softmax(
-        model(torch.tensor(spectrum,dtype=torch.float32)), dim=0)
-    for (yv,bar) in zip(pred,barcol):
-      bar.set_height(yv)
+	0.0000005*model(torch.tensor(spectrum,dtype=torch.float32)), dim=0)
+  for (yv,bar) in zip(pred,barcol):
+    bar.set_height(yv)
 
 ani = FuncAnimation(fig, update, frames=[0], repeat=True,
-  init_func=init)  #  , interval=1)
+  init_func=init, interval=1)
 plt.show()
